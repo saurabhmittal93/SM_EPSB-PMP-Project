@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Management Program (POPA) Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+            color: #f8fafc;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #dashboard-layout {
+            display: flex;
+            flex-direction: row;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #chart-wrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #header {
+            padding: 30px;
+            background: linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(15,23,42,0) 100%);
+            z-index: 10;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            pointer-events: none; 
+        }
+        #header h1 { margin: 0; font-size: 24px; font-weight: 700; color: #38bdf8; }
+        #header h2 { margin: 6px 0 4px 0; font-size: 18px; color: #cbd5e1; font-weight: 400; }
+        #header h3 { margin: 0; font-size: 18px; color: #cbd5e1; font-weight: 400; }
+
+        #chart-container { flex: 1; width: 100%; height: 100%; }
+
+        #info-card {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 230px; 
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 20px;
+            z-index: 20;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+        
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px 10px;
+            font-size: 12px;
+            align-items: center;
+        }
+
+        .card-label { 
+            color: #94a3b8; 
+            text-align: left;
+            white-space: normal;
+            line-height: 1.3;
+        }
+        .card-val { 
+            font-weight: 600; 
+            color: #f1f5f9; 
+            word-wrap: break-word;
+            text-align: right;
+            max-width: 135px;
+        }
+
+        .status-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #fff;
+            display: inline-block;
+        }
+        .status-complete { background-color: #10b981; }
+        .status-progress { background-color: #f59e0b; }
+
+        .card-header-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #bae6fd;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            line-height: 1.3;
+        }
+
+        #center-label {
+            position: absolute;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #38bdf8;
+            font-weight: bold;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 5;
+        }
+        
+        .center-root { left: 50%; top: 85%; transform: translate(-50%, -50%); }
+        .center-dept { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+        
+        #pmp-title { font-size: 18px; line-height: 24px; letter-spacing: 1px; text-transform: uppercase; max-width: 140px; }
+        #dept-title { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        
+        #active-dept-name {
+            font-size: 13px;
+            color: #bae6fd;
+            max-width: 120px;
+            word-wrap: break-word;
+            line-height: 1.2;
+        }
+
+        .back-btn {
+            pointer-events: auto;
+            cursor: pointer;
+            font-size: 12px;
+            color: #94a3b8;
+            background: rgba(255,255,255,0.08);
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.2s;
+        }
+        .back-btn:hover { color: #fff; background: rgba(56,189,248,0.4); border-color: #38bdf8; }
+    </style>
+</head>
+<body>
+
+    <div id="dashboard-layout">
+        
+        <div id="chart-wrapper">
+            <div id="header">
+                <h1>Privacy Management Program (PMP)</h1>
+                <h2>Information Assets Dashboard</h2>
+                <h3>Project Manager: Lea Beeken</h3>
+            </div>
+
+            <div id="center-label" class="center-root">
+                <div id="pmp-title">Departments</div>
+                <div id="dept-title" style="display: none;">
+                    <div id="active-dept-name"></div>
+                    <div class="back-btn" onclick="goBack()" title="Go Back">&#8592; Back</div>
+                </div>
+            </div>
+
+            <div id="chart-container"></div>
+        </div>
+        
+        <div id="info-card">
+            
+            <div id="summary-view">
+                <div class="card-header-title" style="color: #fff;">Division Summary</div>
+                <div class="grid-layout">
+                    <span class="card-label">Total number of departments:</span>
+                    <span class="card-val" id="sum-dept">-</span>
+                    
+                    <span class="card-label">Total Number of IAC's:</span>
+                    <span class="card-val" id="sum-iac" style="color:#818cf8;">-</span>
+                    
+                    <span class="card-label">Total Info. Assets Identified:</span>
+                    <span class="card-val" id="sum-assets" style="color:#34d399;">-</span>
+                    
+                    <span class="card-label">Total PIB's Identified:</span>
+                    <span class="card-val" id="sum-pibs" style="color:#f87171;">-</span>
+                </div>
+            </div>
+
+            <div id="dept-view" style="display: none;">
+                <div class="card-header-title" id="val-dept-title">-</div>
+                <div class="grid-layout">
+                    <span class="card-label">Status:</span>
+                    <div style="text-align: right;"><span id="cardStatusChip" class="status-badge">-</span></div>                    
+                    <span class="card-label" id="label-du">Decision Units:</span>
+                    <span class="card-val" id="val-du">-</span>
+                    
+                    <span class="card-label">Total IAC's:</span>
+                    <span class="card-val" id="val-iac" style="color:#818cf8;">-</span>
+                    
+                    <span class="card-label">Completion:</span>
+                    <span class="card-val" id="val-comp">-</span>
+                    
+                    <span class="card-label">Assets Collected:</span>
+                    <span class="card-val" id="val-assets" style="color:#34d399;">-</span>
+                    
+                    <span class="card-label">PIBs:</span>
+                    <span class="card-val" id="val-pibs" style="color:#f87171;">-</span>
+                    
+                    <span class="card-label">BA Owner:</span>
+                    <span class="card-val" id="val-owner">-</span>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        // Data directly compiled and linked with all extracted spreadsheet links
+        const rawData = [
+          {
+            "Departments": "General Counsel",
+            "Owner": "Michael Dacosta",
+            "Number of IAC's": 1,
+            "Estimated Completion Percentage": 78,
+            "Status": "In- Progress",
+            "color": "#0f766e",
+            "iac_groups": [
+                { "assets": "31", "pibs": "18", "color": "#14b8a6", "dus": ["Division Support Services"], "link": "https://docs.google.com/spreadsheets/d/19NVrMr20kAvyaKdEZCISa2nvQbt2i8YEqb6JwTWIRZ0/edit?usp=drive_link" }
+            ]
+          },
+          {
+            "Departments": "Board & Superintendent's Relations",
+            "Owner": "Michael Dacosta (IAC's)",
+            "Number of IAC's": 1,
+            "Estimated Completion Percentage": 90,
+            "Status": "In- Progress",
+            "color": "#6366f1",
+            "iac_groups": [
+                { "assets": "30", "pibs": "7", "color": "#8b5cf6", "dus": ["Board & Superintendent's Relations"], "link": "https://docs.google.com/spreadsheets/d/1jKwEOilk24mxM2hEd9yLZ6tgPjrOR6kUtGTpPzqTEps/edit?usp=drive_link" }
+            ]
+          },
+          {
+            "Departments": "Infrastructure",
+            "Owner": "Michael Dacosta",
+            "Number of IAC's": 4,
+            "Estimated Completion Percentage": 65,
+            "Status": "In- Progress",
+            "color": "#0284c7",
+            "iac_groups": [
+                { "assets": "20", "pibs": "0", "color": "#3b82f6", "dus": ["Infrastructure"], "link": "https://docs.google.com/spreadsheets/d/1zBsleB9BXGN41kUeb50S2jUsAmtawoJFjtRCgd_j5i4/edit?usp=drive_link" },
+                { "assets": "25", "pibs": "14", "color": "#ec4899", "dus": ["Integrated Infrastructure Services"], "link": "https://docs.google.com/spreadsheets/d/1Muz0TuKVtyfmWz8pLgbsr4d6CyAnKVt7O_KGMBAPq90/edit?usp=drive_link" },
+                { "assets": "1", "pibs": "1", "color": "#f59e0b", "dus": ["Infrastructure Planning"], "link": "https://docs.google.com/spreadsheets/d/1NLPPylmE1BQoXW1HMW0tRRSm1xwQUiHgG7n3UXTFrw4/edit?usp=drive_link" },
+                { "assets": "50", "pibs": "13", "color": "#10b981", "dus": ["Property Management"], "link": "https://docs.google.com/spreadsheets/d/1V8bXjHDYLdc_TDwh0O4SfbO_WGQADQV-17I24d0OgLY/edit?usp=drive_link" }
+            ]
+          },
+          {
+            "Departments": "Financial Services",
+            "Owner": "Michael Dacosta",
+            "Number of IAC's": 1,
+            "Estimated Completion Percentage": 70,
+            "Status": "In- Progress",
+            "color": "#0369a1",
+            "iac_groups": [
+                { "assets": "70", "pibs": "23", "color": "#ec4899", "dus": ["Internal Audit", "Financial Reporting", "Purchasing and Contract Services", "Special Projects and Cash Management", "Budget and Funding", "Business Systems", "Financial Operations", "Risk Management", "School Accountants and Internal Reporting"], "link": "https://docs.google.com/spreadsheets/d/1yCdgJrf8Tb7NxWJM3KpBk0Li3T3dgi8j28LhL3H4oVE/edit?usp=drive_link" }
+            ]
+          },
+          {
+            "Departments": "Instructional Supports",
+            "Owner": "Michael Dacosta",
+            "Number of IAC's": 2,
+            "Estimated Completion Percentage": 95,
+            "Status": "In- Progress",
+            "color": "#4f46e5",
+            "iac_groups": [
+                { "assets": "80", "pibs": "43", "color": "#8b5cf6", "dus": ["Specialized Learning Support (SLS)", "Comprehensive School Health", "SLS School Linked Teams"], "link": "https://docs.google.com/spreadsheets/d/1kYnPelnDyh54iYMO_OgO6FCrkdEiiVHBRGuxoe9PgBk/edit?usp=drive_link" },
+                { "assets": "95", "pibs": "18", "color": "#06b6d4", "dus": ["Curriculum and Learning Supports (CLS)", "Career Pathways", "Curriculum Early Years", "Second Languages", "First Nations, Métis and Inuit Education"], "link": "https://docs.google.com/spreadsheets/d/1SfV8uHse8ii0jUpdOqHTOPvpvGE0nKPAjWTMY4dKie4/edit?usp=drive_link" }
+            ]
+          },
+          {
+            "Departments": "Strategic Division Supports",
+            "Owner": "SAURABH MITTAL",
+            "Number of IAC's": 2,
+            "Estimated Completion Percentage": 100,
+            "Status": "Complete",
+            "color": "#0d9488",
+            "iac_groups": [
+                { "assets": "45", "pibs": "32", "color": "#f59e0b", "dus": ["Administrative Regulations", "AERR/Strategic Reporting", "Anti-racism, Reconciliation and Equity Diversity", "Division Feedback Survey", "International Programs", "Partnerships", "Research", "Student Awards", "Confucius Institute"], "link": "https://docs.google.com/spreadsheets/d/1Ol3yFMGmAi5W8KJ05Kkjs4uj9O1nTgneMtxEm7Nfcf0/edit?usp=drive_link" },
+                { "assets": "13", "pibs": "5", "color": "#10b981", "dus": ["Foundation"], "link": "https://docs.google.com/spreadsheets/d/1l1S4RimeKrI_ehta6ymk_5lmLpKjK7Fw7cn7F7zAkL8/edit?usp=drive_link" }
+            ]
+          },
+          {
+            "Departments": "Communications",
+            "Owner": "SAURABH MITTAL",
+            "Number of IAC's": 1,
+            "Estimated Completion Percentage": 100,
+            "Status": "Complete",
+            "color": "#2563eb",
+            "iac_groups": [
+                { "assets": "18", "pibs": "3", "color": "#eab308", "dus": ["Superintendent and Board Support", "Communications Planning", "Connect/epsb.ca Design, video support", "Division events", "Internal Communications", "Media/issues Management"], "link": "https://docs.google.com/spreadsheets/d/1AYDjQG2k4V_2hGrdRV5jgxW3oVhyM41VkD8CfzJv6-Q/edit?usp=drive_link" }
+            ]
+          },
+          {
+            "Departments": "Technology and Information Management (TIM)",
+            "Owner": "SAURABH MITTAL",
+            "Number of IAC's": 7,
+            "Estimated Completion Percentage": 70,
+            "Status": "In- Progress",
+            "color": "#1d4ed8",
+            "iac_groups": [
+                { "assets": "13", "pibs": "2", "color": "#8b5cf6", "dus": ["Enterprise Technology Support (ETS)"], "link": "https://docs.google.com/spreadsheets/d/1qtgpwkJ8AjeNXaWQD1SP0iCF7uqXJ4j73XkY_B4BwA4/edit?usp=drive_link" },
+                { "assets": "10", "pibs": "4", "color": "#f43f5e", "dus": ["ITS Store", "Help Desk", "Operations Support", "Training"], "link": "https://docs.google.com/spreadsheets/d/1NeEaS_GASp2mGmvEk-9-2Y7RQFkae3orf1kYzs_s1hM/edit?usp=drive_link" },
+                { "assets": "22", "pibs": "7", "color": "#06b6d4", "dus": ["School Supports and Training"], "link": "https://docs.google.com/spreadsheets/d/1Su02vtjHJtTZv4iFAO46cJ-g-PCZjC42lFMEDe1LIps/edit?usp=drive_link" },
+                { "assets": "15", "pibs": "61", "color": "#10b981", "dus": ["Information Management"], "link": "https://docs.google.com/spreadsheets/d/1SityrLAqb6qBS49fAKzfZyXW3nZhzmVyf59WDWbx6Is/edit?usp=drive_link" },
+                { "assets": "12", "pibs": "10", "color": "#f59e0b", "dus": ["Student Information"], "link": "https://docs.google.com/spreadsheets/d/1JLPTja4lac3dYowVcLrmAWxiHpcAP9l0Rh0_JCINS5s/edit?usp=drive_link" },
+                { "assets": "14", "pibs": "13", "color": "#3b82f6", "dus": ["Programming Services"], "link": "https://docs.google.com/spreadsheets/d/1XpqWL8jHJjvSMj1IPt_zE8_vS1u9_7Zg7SJEQiL65HI/edit?usp=drive_link" },
+                { "assets": "40", "pibs": "0", "color": "#84cc16", "dus": ["Network Operations"], "link": "https://docs.google.com/spreadsheets/d/16h4xusUJOtjqF6Ne8cNQvvbMT1JbH0FSXMJkBT85zEA/edit?usp=drive_link" }
+            ]
+          },
+          {
+            "Departments": "Human Resources",
+            "Owner": "SAURABH MITTAL",
+            "Number of IAC's": 1,
+            "Estimated Completion Percentage": 50,
+            "Status": "In- Progress",
+            "color": "#4338ca",
+            "iac_groups": [
+                { "assets": "39", "pibs": "33", "color": "#ec4899", "dus": ["Talent Management", "HR Service Centre", "Leadership Development", "Staff Relations", "Labour Relations & Total Compensation", "Staff Development / Career Transitions"], "link": "https://docs.google.com/spreadsheets/d/1c_daBlWJ2Nde-U3VRSr3qnWmPEVqiZWKrtmczaIVcGI/edit?usp=drive_link" }
+            ]
+          }
+        ];
+
+        let currentState = 'root'; 
+        let activeDept = null;
+        
+        const chartDom = document.getElementById('chart-container');
+        const myChart = echarts.init(chartDom);
+        const centerLabel = document.getElementById('center-label');
+        const pmpTitle = document.getElementById('pmp-title');
+        const deptTitle = document.getElementById('dept-title');
+        const activeDeptName = document.getElementById('active-dept-name');
+
+        function populateSummary() {
+            let totalIACs = 0, totalAssets = 0, totalPIBs = 0;
+            rawData.forEach(d => {
+                totalIACs += d["Number of IAC's"];
+                d.iac_groups.forEach(iac => {
+                    totalAssets += parseInt(iac.assets) || 0;
+                    totalPIBs += parseInt(iac.pibs) || 0;
+                });
+            });
+            document.getElementById('sum-dept').innerText = rawData.length;
+            document.getElementById('sum-iac').innerText = totalIACs;
+            document.getElementById('sum-assets').innerText = totalAssets;
+            document.getElementById('sum-pibs').innerText = totalPIBs;
+        }
+
+        function getRootData() {
+            let data = rawData.map(d => ({
+                name: d["Departments"],
+                value: 1, 
+                itemStyle: { color: d.color, borderWidth: 2, borderColor: '#020617' },
+                meta: { ...d, "Decision Units / DU Functions": "-" }
+            }));
+            
+            data.push({
+                name: 'DUMMY_SPACER', value: 9,
+                itemStyle: { color: 'transparent', borderWidth: 0 },
+                label: { show: false }, tooltip: { show: false }, cursor: 'default'
+            });
+            return data;
+        }
+
+        function getDeptData(deptName) {
+            let dept = rawData.find(d => d["Departments"] === deptName);
+            
+            let data = dept.iac_groups.map(iac => {
+                let node = {
+                    name: "Assets: " + iac.assets + "\nPIBs: " + iac.pibs,
+                    itemStyle: { color: iac.color, opacity: 0.90, borderWidth: 2, borderColor: '#020617' },
+                    meta: { ...dept, "DU_Assets": iac.assets, "DU_PIBs": iac.pibs, "iac_link": iac.link },
+                    children: []
+                };
+
+                iac.dus.forEach(duName => {
+                    node.children.push({
+                        name: duName,
+                        value: 1, 
+                        itemStyle: { color: dept.color, opacity: 0.70, borderWidth: 1, borderColor: '#020617' },
+                        meta: { ...dept, "Decision Units / DU Functions": duName, "DU_Assets": iac.assets, "DU_PIBs": iac.pibs }
+                    });
+                });
+                
+                return node;
+            });
+            return data;
+        }
+
+        function renderChart() {
+            let option = {
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    textStyle: { color: '#f8fafc' },
+                    formatter: function (p) {
+                        if (p.name === 'DUMMY_SPACER' || !p.data.meta) return '';
+                        let m = p.data.meta;
+                        
+                        let html = '<div style="font-weight:700; color:#38bdf8; margin-bottom:8px;">' + p.name.replace('\n', ' | ') + '</div>' +
+                            '<table style="font-size:12px; color:#cbd5e1;">' +
+                                '<tr><td style="padding-right:10px;">Status:</td><td style="color:#fff">' + m["Status"] + ' (' + m["Estimated Completion Percentage"] + '%)</td></tr>' +
+                            '</table>';
+
+                        if (currentState === 'dept' && p.data.children !== undefined) {
+                            html += '<div style="margin-top:8px; font-size:11px; color:#34d399; font-weight:600; border-top:1px solid rgba(255,255,255,0.1); padding-top:6px;">🔗 Click to open IAC Catalogue</div>';
+                        }
+                        return html;
+                    }
+                }
+            };
+            
+            if (currentState === 'root') {
+                centerLabel.className = 'center-root';
+                pmpTitle.style.display = 'block';
+                deptTitle.style.display = 'none';
+                
+                document.getElementById('summary-view').style.display = 'block';
+                document.getElementById('dept-view').style.display = 'none';
+
+                option.series = {
+                    type: 'sunburst',
+                    data: getRootData(),
+                    nodeClick: false,
+                    radius: ['28%', '100%'], 
+                    center: ['50%', '85%'], 
+                    startAngle: 360, 
+                    levels: [
+                        {},
+                        { 
+                            r0: '30%', r: '100%', 
+                            label: { 
+                                position: 'inside', rotate: 'radial', align: 'center', 
+                                fontSize: 13, fontWeight: 'bold', color: '#fff',
+                                width: 140, overflow: 'break' 
+                            }
+                        }
+                    ],
+                    animationDurationUpdate: 800,
+                    animationEasingUpdate: 'cubicInOut'
+                };
+            } else {
+                centerLabel.className = 'center-dept';
+                pmpTitle.style.display = 'none';
+                deptTitle.style.display = 'flex';
+                activeDeptName.innerText = activeDept;
+
+                document.getElementById('summary-view').style.display = 'none';
+                document.getElementById('dept-view').style.display = 'block';
+
+                option.series = {
+                    type: 'sunburst',
+                    data: getDeptData(activeDept),
+                    nodeClick: false,
+                    radius: ['20%', '85%'], 
+                    center: ['50%', '50%'], 
+                    startAngle: 90,
+                    levels: [
+                        {},
+                        { 
+                            r0: '60%', r: '85%',
+                            label: { 
+                                position: 'inside', rotate: 0, align: 'center', 
+                                fontSize: 11, fontWeight: 'bold', color: '#fff',
+                                width: 80, overflow: 'break' 
+                            }
+                        },
+                        { 
+                            r0: '25%', r: '60%',
+                            label: { 
+                                position: 'inside', rotate: 0, align: 'center', 
+                                fontSize: 12, color: '#f8fafc',
+                                width: 100, overflow: 'break' 
+                            }
+                        }
+                    ],
+                    animationDurationUpdate: 800,
+                    animationEasingUpdate: 'cubicInOut'
+                };
+            }
+            
+            myChart.setOption(option);
+        }
+
+        function updateCard(meta, duValue, isDeptOnly) {
+            document.getElementById('val-dept-title').innerText = meta["Departments"];
+            
+            const badge = document.getElementById('cardStatusChip');
+            let statusStr = meta["Status"];
+            badge.innerText = statusStr;
+            badge.className = `status-badge ${statusStr.toLowerCase().includes('complete') ? 'status-complete' : 'status-progress'}`;
+            
+            let duLabel = document.getElementById('label-du');
+            let duValEl = document.getElementById('val-du');
+            
+            if (isDeptOnly) {
+                duLabel.innerText = "# of Decision Units:";
+                let totalDUs = 0;
+                meta.iac_groups.forEach(iac => totalDUs += iac.dus.length);
+                duValEl.innerText = totalDUs;
+                
+                document.getElementById('val-iac').innerText = meta["Number of IAC's"];
+                
+                let totalAssets = 0, totalPibs = 0;
+                meta.iac_groups.forEach(iac => {
+                    totalAssets += parseInt(iac.assets) || 0;
+                    totalPIBs += parseInt(iac.pibs) || 0;
+                });
+                document.getElementById('val-assets').innerText = totalAssets;
+                document.getElementById('val-pibs').innerText = totalPIBs;
+            } else {
+                duLabel.innerText = "Decision Unit Group:";
+                duValEl.innerText = duValue.replace(/Assets.*\nPIBs.*/, 'Group Outer Ring'); 
+                
+                document.getElementById('val-iac').innerText = meta.DU_Assets ? "1" : "0"; 
+                document.getElementById('val-assets').innerText = meta.DU_Assets || "0";
+                document.getElementById('val-pibs').innerText = meta.DU_PIBs || "0";
+            }
+            
+            document.getElementById('val-comp').innerText = meta["Estimated Completion Percentage"] + "%";
+            document.getElementById('val-owner').innerText = meta["Owner"];
+        }
+
+        function goBack() {
+            currentState = 'root';
+            activeDept = null;
+            renderChart();
+        }
+
+        myChart.on('click', function (p) {
+            if (p.name === 'DUMMY_SPACER' || !p.data.meta) return;
+            
+            let meta = p.data.meta;
+            
+            if (currentState === 'root') {
+                currentState = 'dept';
+                activeDept = meta["Departments"];
+                renderChart();
+                updateCard(meta, "-", true); 
+            } else {
+                if (p.data.children !== undefined) {
+                    if (meta.iac_link) {
+                        window.open(meta.iac_link, '_blank');
+                    }
+                }
+                updateCard(meta, p.name, false); 
+            }
+        });
+
+        populateSummary();
+        renderChart();
+        window.addEventListener('resize', () => myChart.resize());
+    </script>
+</body>
+</html>
