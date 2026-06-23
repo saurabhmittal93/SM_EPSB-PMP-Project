@@ -402,25 +402,30 @@
         function renderChart() {
             let option = {
                 tooltip: {
-                    trigger: 'item',
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                    borderColor: 'rgba(255,255,255,0.1)',
-                    textStyle: { color: '#f8fafc' },
-                    formatter: function (p) {
-                        if (p.name === 'DUMMY_SPACER' || !p.data.meta) return '';
-                        let m = p.data.meta;
-                        
-                        let html = '<div style="font-weight:700; color:#38bdf8; margin-bottom:8px;">' + p.name.replace('\n', ' | ') + '</div>' +
-                            '<table style="font-size:12px; color:#cbd5e1;">' +
-                                '<tr><td style="padding-right:10px;">Status:</td><td style="color:#fff">' + m["Status"] + ' (' + m["Estimated Completion Percentage"] + '%)</td></tr>' +
-                            '</table>';
+    trigger: 'item',
+    enterable: true, // CRITICAL: Allows the mouse to enter the tooltip box
+    position: function (point) {
+        // Offsets the tooltip slightly to the right and down so it doesn't fight the cursor
+        return [point[0] + 15, point[1] + 15];
+    },
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    borderColor: 'rgba(255,255,255,0.1)',
+    textStyle: { color: '#f8fafc' },
+    formatter: function (p) {
+        if (p.name === 'DUMMY_SPACER' || !p.data.meta) return '';
+        let m = p.data.meta;
+        
+        let html = '<div style="font-weight:700; color:#38bdf8; margin-bottom:8px;">' + p.name.replace('\n', ' | ') + '</div>' +
+            '<table style="font-size:12px; color:#cbd5e1;">' +
+                '<tr><td style="padding-right:10px;">Status:</td><td style="color:#fff">' + m["Status"] + ' (' + m["Estimated Completion Percentage"] + '%)</td></tr>' +
+            '</table>';
 
-                        if (currentState === 'dept' && p.data.children !== undefined) {
-                            html += '<div style="margin-top:8px; font-size:11px; color:#34d399; font-weight:600; border-top:1px solid rgba(255,255,255,0.1); padding-top:6px;">🔗 Click to open IAC Catalogue</div>';
-                        }
-                        return html;
-                    }
-                }
+        if (currentState === 'dept' && p.data.children !== undefined) {
+            html += '<div style="margin-top:8px; font-size:11px; color:#34d399; font-weight:600; border-top:1px solid rgba(255,255,255,0.1); padding-top:6px;">🔗 Click slice or text to open IAC Catalogue</div>';
+        }
+        return html;
+    }
+}
             };
             
             if (currentState === 'root') {
